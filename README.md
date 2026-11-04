@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# teste-artefact
 
-## Getting Started
+Aplicação Next.js 15 que simula um gerenciador simples de tarefas, com API tipada via **tRPC** e armazenamento **em memória** (sem banco de dados).
 
-First, run the development server:
+## Stack
+
+- **Next.js 15** (App Router) + React 19
+- **tRPC v11** + **Zod** (validação) + **superjson** (serialização de `Date`)
+- **TanStack React Query** (cache, mutations e infinite query)
+
+## Como funciona
+
+### Backend (`src/server`)
+
+- `db.ts` — store em memória (preservado em HMR via `globalThis`)
+- `routers/tarefa.ts` — CRUD tipado:
+  - `criar` / `listar` / `obter` / `atualizar` / `deletar`
+- Validação: título obrigatório; erros `NOT_FOUND` ao editar/deletar id inexistente
+- `listar` é paginado (cursor) para habilitar infinite scroll
+
+### Frontend (`src/app` + `src/components`)
+
+| Rota | Comportamento |
+|------|----------------|
+| `/` | Listagem com **SSR** da 1ª página + infinite scroll no cliente |
+| `/tarefas/nova` | Formulário de criação |
+| `/tarefas/[id]/editar` | Formulário de edição (dados pré-carregados no servidor) |
+
+Feedback visual de sucesso/erro/carregamento nas mutations e validação de título no formulário.
+
+## Como executar
 
 ```bash
+cd teste-artefact
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Outros scripts:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build   # build de produção
+npm run start   # serve o build
+npm run lint    # ESLint
+```
 
-## Learn More
+## Decisões técnicas
 
-To learn more about Next.js, take a look at the following resources:
+1. **Caller server-side** (`src/trpc/server.ts`) para SSR sem HTTP interno.
+2. **Infinite scroll** com `useInfiniteQuery` + `IntersectionObserver` no sentinel.
+3. **Seed de 25 tarefas** no store para facilitar o teste do scroll.
+4. Estado em memória: reiniciar o servidor limpa/reseta os dados (seed é recriado).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Estrutura
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+  app/
+    api/trpc/[trpc]/route.ts   # handler HTTP do tRPC
+    page.tsx                   # listagem (SSR)
+    tarefas/nova/page.tsx
+    tarefas/[id]/editar/page.tsx
+  components/
+    TaskList.tsx               # listagem + infinite scroll + delete
+    TaskForm.tsx               # create/update
+    Feedback.tsx
+  server/
+    db.ts
+    trpc.ts
+    routers/
+  trpc/
+    client.ts
+    server.ts
+    Provider.tsx
+```
